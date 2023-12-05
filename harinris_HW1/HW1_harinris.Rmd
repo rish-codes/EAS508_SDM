@@ -1,0 +1,337 @@
+---
+title: "HW1_harinris"
+author: "Harin Rishabh"
+date: "2023-09-20"
+output: html_document
+---
+
+# Lab 2.3
+
+## 2.3.1 - Basic Commands
+
+Create 2 vectors:
+
+```{r}
+x <- c(1, 2, 3, 4)
+y = c(5, 6, 7 ,8)
+
+x
+length(y)
+```
+
+Add 2 sets of numbers
+
+```{r}
+x + y
+```
+
+List and delete objects
+
+```{r}
+ls()
+rm(x)
+ls()
+a = 10
+b = 20
+ls()
+rm(list = ls())
+ls()
+```
+
+Generating a sequence of random numbers
+```{r}
+seq(-pi, pi, length = 7)
+```
+
+Matrix - 
+Creating a matrix and performing basic calculations
+
+```{r}
+x = matrix(data = c(1, 2, 3, 4), nrow = 2, ncol = 2, byrow = TRUE)
+x
+sqrt(x)
+x^2
+```
+
+Generating 2 vectors of random normal variables and computing correlation between them
+```{r}
+a = rnorm(50)
+b = a + rnorm(50, mean = 50, sd = 0.1)
+cor(a, b)
+```
+
+Using set.seed to setup a pseudo-random number generator
+```{r}
+set.seed(3)
+x = rnorm(100)
+mean(x)
+var(x)
+sqrt(var(x))
+sd(x)
+```
+
+
+## 2.3.2 - Graphics
+
+Plotting graphs with labels and saving as PDF
+```{r}
+pdf("Figure.pdf")
+x = rnorm(100)
+y = rnorm(100)
+plot(x, y, xlab = "X-axis", ylab = "Y-axis", main = "This a graph of X vs Y")
+dev.off()
+```
+
+Using the contour() and persp() function to plot 3-D graphs
+```{r}
+x = seq(-pi, pi, length = 7)
+y = x
+f = outer(x, y, function(x , y) cos (y) / (1 + x^2))
+contour(x, y, f)
+fa = (f - t (f)) / 2
+contour(x, y, fa, nlevels = 15)
+```
+
+Using image() to plot 3-D graphs
+```{r}
+image(x, y, fa)
+persp(x, y, fa, theta = 60, phi = 30)
+
+```
+
+
+## 2.3.3 - Indexing Data
+
+Exploring different ways to examine a portion of the dataset or refer to particular elements by index
+
+```{r}
+A = matrix(1:16, 4, 4)
+A
+A[3, 3]
+A [c(1, 3), c(2, 4)]
+A[1:3, 2:4]
+A[1:2,]
+A[, 1:2]
+A[-c(1, 3), ]
+dim(A)
+```
+
+
+## 2.3.4 - Loading Data
+
+We are using the Auto dataset from ISLR2 package. We install the package through console and view the first few rows of the dataset using head. Next, we use na.omit() to remove the rows with missing data.
+
+```{r}
+library('ISLR')
+head(Auto)
+dim(Auto)
+Auto = na.omit(Auto)
+dim(Auto)
+names(Auto)
+```
+
+
+##  2.3.5 - Additional Graphical and Numerical Summaries
+
+Plotting graphs using values in Auto data set. Data set can be refered to by $ sign.
+
+```{r}
+plot(Auto$cylinders, Auto$mpg)
+```
+
+Or by using attach() to make the variables in this data frame available by name.
+
+```{r}
+attach(Auto)
+plot(cylinders, mpg, col = "red", xlab = "cylinders", ylab = "MPG")
+```
+
+hist() is used to plot Histograms.
+
+```{r}
+hist(mpg, col = 2, breaks = 50)
+```
+
+pairs() creates a scatterplot for every pair of variables. We can also produce scatterplots for just a subset of the variables.
+
+```{r}
+pairs(Auto)
+pairs(~ mpg + displacement + horsepower + weight + acceleration, data = Auto)
+```
+
+We can use summary() to view a numerical summary of each variable in a particular data set.
+
+```{r}
+summary(Auto)
+summary(mpg)
+```
+
+
+# Exercise 2.4
+
+**9. This exercise involves the Auto data set studied in the lab. Make sure that the missing values have been removed from the data.**\
+**(a) Which of the predictors are quantitative, and which are qualitative?**\
+Answer - MPG, Displacement, Horsepower, Weight and Acceleration are Quantitative predictors. Cylinders, name, year and origin are Qualitative predictors.
+
+
+**(b) What is the range of each quantitative predictor? You can answer this using the range() function.**\
+Answer - 
+```{r}
+Auto = na.omit(Auto)
+range(mpg)   # Range of MPG
+range(displacement)   # Range of Displacement
+range(horsepower)   # Range of Horsepower
+range(weight)   # Range of Weight
+range(acceleration)   # Range of Acceleration
+```
+
+**c) What is the mean and standard deviation of each quantitative predictor?**\
+Answer - 
+```{r}
+Auto = na.omit(Auto)
+mean(mpg)   # Mean of MPG
+sd(mpg)   # Standard Deviation of MPG
+mean(displacement)   # Mean of Displacement
+sd(displacement)   # Standard Deviation of Displacement
+mean(horsepower)   # Mean of horsepower
+sd(horsepower)   # Standard Deviation of Horsepower
+mean(weight)   # Mean of Weight
+sd(weight)   # Standard Deviation of Weight
+mean(acceleration)   # Mean of Acceleration
+sd(acceleration)   # Standard Deviation of Acceleration
+```
+
+**(d) Now remove the 10th through 85th observations. What is the range, mean, and standard deviation of each predictor in the subset of the data that remains?**\
+Answer - 
+```{r}
+Auto2 = Auto[-(10:84),]
+attach(Auto2)
+range(mpg)   # Range of MPG
+range(displacement)   # Range of Displacement
+range(horsepower)   # Range of Horsepower
+range(weight)   # Range of Weight
+range(acceleration)   # Range of Acceleration
+mean(mpg)   # Mean of MPG
+sd(mpg)   # Standard Deviation of MPG
+mean(displacement)   # Mean of Displacement
+sd(displacement)   # Standard Deviation of Displacement
+mean(horsepower)   # Mean of horsepower
+sd(horsepower)   # Standard Deviation of Horsepower
+mean(weight)   # Mean of Weight
+sd(weight)   # Standard Deviation of Weight
+mean(acceleration)   # Mean of Acceleration
+sd(acceleration)   # Standard Deviation of Acceleration
+```
+
+**(e) Using the full data set, investigate the predictors graphically, using scatter plots or other tools of your choice. Create some plots highlighting the relationships among the predictors. Comment on your findings.**\
+Answer -
+```{r}
+attach(Auto)
+plot(mpg, displacement, xlab = "MPG", ylab = "Displacement")
+# This graphs shows us that more the displacement of the engine, lower the Miles per gallon(mileage)
+
+plot(horsepower, displacement, xlab = "Horsepower", ylab = "Displacement")
+# This graphs shows us that more the displacement of the engine, more the horsepower usually
+
+plot(mpg, displacement, xlab = "MPG", ylab = "Horsepower")
+# This graphs shows us that more the horsepower of the engine, lower the Miles per gallon(mileage)
+
+```
+
+
+**(f) Suppose that we wish to predict gas mileage ( mpg) on the basis of the other variables. Do your plots suggest that any of the other variables might be useful in predicting mpg? Justify your answer.**\
+Answer - Yes according to my plots, mpg is inversely proportional to displacement and horsepower of the engine. Furthermore, mpg can also be predicted from weight. More the weight of the car, lesser the mpg.
+
+**8) a**\
+Answer -
+``` {r}
+#reading the csv file from local desktop by using the read.csv function 
+College=read.csv("/Users/rishabh/Downloads//College.csv")
+head(College)
+
+
+```
+
+**8) b) i)**\
+Answer -
+``` {r}
+#printing the first column of the data frame
+rownames(College) <- College[, 1]
+rownames(College)
+head(College)
+
+#deleting the first column of the data frame 
+College <- College[, -1] 
+head(College)
+```
+
+**8) c) i)**\
+Answer -
+``` {r}
+summary(College)
+```
+**8) c) ii)**\
+Answer -
+```{r}
+#converting the categorical value to the numeric by using the as.factor
+College[,1] <-as.factor(College[,1])
+#plotting the scatter plot for the first 10 features
+pairs(College[,1:10])
+```
+
+**8) c) iii)**\
+Answer -
+
+``` {r}
+#plotting the box plot for the private and out-state features
+College$Private <- as.factor(College$Private)
+plot(College$Private,College$Outstate,xlab="Private",ylab="Outstate",main='Private vs Outstate')
+
+```
+
+**8) c) iv)**\
+Answer -
+
+``` {r}
+# creating a new feature called elite and filling the column with No
+# in second line we are checking the that top 10% >50 then it changes to YES and changing to numerical by using as.factor
+Elite <- rep("No", nrow(College))
+Elite[College$Top10perc > 50] <- "Yes"
+Elite <- as.factor(Elite)
+College <- data.frame(College,Elite)
+head(College) # printing the the first 5 rows of the data frame 
+
+# printing the summary of the college
+summary(College)
+
+#printing the Box plot between Elite and Outstate
+plot(College$Elite,College$Outstate,xlab="Elite",ylab="Outstate",main='Elite vs Outstate')
+```
+**8) c) v)**\
+Answer -
+
+``` {r}
+#plotting the histogram plots for quantitative variables
+par(mfrow=c(2,2))
+hist(College$Enroll,xlab="Total Enrollments",main="")
+hist(College$Personal,xlab="Personal",main="")
+hist(College$Room.Board,xlab="Room Board",main="")
+
+```
+**8) c) vi)**\
+Answer -
+
+``` {r}
+# finding mean Graduation Rate
+print(paste("The mean Graduation Rate of the universities:",mean(College$Grad.Rate)))
+
+# Plotting the scatterplot for the outstate vs the Graduation rate 
+plot(College$Outstate,College$Grad.Rate)
+
+# university with the Minimum applications 
+print(paste("Minimum applications for university:",
+row.names(College)[which.min(College$Apps)]))
+
+```
+
+
