@@ -1,0 +1,332 @@
+---
+title: "HW3_harinris"
+author: "Harin Rishabh"
+date: "2023-10-18"
+output: html_document
+---
+
+# Lab 6.5 Part 1
+
+## 6.5.1 Subset Selection Methods
+
+### Best Subset Selection
+
+We are trying predict a baseball player’s Salary on the basis of various statistics associated with performance in the previous year.
+Using is.na() to find missing observations in salary. na.omit() removes these rows.
+
+```{r}
+library(ISLR2)
+names(Hitters)
+dim(Hitters)
+sum(is.na(Hitters$Salary))
+Hitters = na.omit(Hitters)
+```
+
+regsubsets() function(it is part of leaps library) performs best subset selection by identifying the best model that contains a given number of predictors, where best is quantified using RSS. By default best 8 variables are returned. Using nvmax we can return 19 variable-model.
+
+```{r}
+library(leaps)
+regfit.full = regsubsets(Salary ~ ., Hitters, nvmax = 19)
+summary(regfit.full)
+```
+
+summary() function returns R^2, RSS, adjusted R^2, Cp, and BIC. R^2 statistic increases from 32 %, when only
+one variable is included in the model, to almost 55 %, when all variables are included.
+```{r}
+reg.summary = summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+```
+
+Plotting RSS, adjusted R2, Cp, and BIC for all of the models at once will help us decide which model to select. We identify the location of the maximum point of a vector using which.max(). We use points() to mark this.
+```{r}
+par(mfrow = c(2, 2))
+plot(reg.summary$rss , xlab = "Number of Variables", ylab = "RSS", type = "l")
+plot(reg.summary$adjr2 , xlab = "Number of Variables", ylab = "Adjusted RSq", type = "l")
+which.max(reg.summary$adjr2)
+points (11, reg.summary$adjr2 [11] , col = "red", cex = 2, pch = 20)
+```
+
+The regsubsets() function has a built-in plot() command which can be used to display the selected variables for the best model with a given number of predictors, ranked according to the BIC, Cp, adjusted R^2, or AIC. The top row of each plot contains a black square for each variable selected according to the optimal model associated with that statistic.
+coef() function gives us the the coefficient estimates associated with this model.
+```{r}
+plot(regfit.full , scale = "r2")
+plot(regfit.full , scale = "adjr2")
+plot(regfit.full , scale = "Cp")
+plot(regfit.full , scale = "bic")
+coef(regfit.full , 6)
+```
+
+### Forward and Backward Stepwise Selection
+
+Using regsubsets() function to perform forward stepwise or backward stepwise selection, with the argument method = "forward" or method = "backward".
+For this data, the best one-variable through six-variable models are each identical for best subset and forward selection. However, the best seven-variable models identified by forward step-wise selection, backward step-wise selection, and best subset selection are different.
+```{r}
+regfit.fwd <- regsubsets(Salary ~ ., data = Hitters, nvmax = 19, method = "forward")
+summary(regfit.fwd)
+regfit.bwd = regsubsets(Salary ~ ., data = Hitters,  nvmax = 19, method = "backward")
+summary(regfit.bwd)
+coef(regfit.full , 7)
+coef(regfit.fwd , 7)
+coef(regfit.bwd , 7)
+```
+
+### Choosing Among Models Using the Validation-Set Approach and Cross-Validation
+
+For validation set approach, we begin by splitting the observations into a training set and a test set. Create
+a random vector, train, of elements equal to TRUE if the corresponding observation is in the training set, and FALSE otherwise. Applying regsubsets() to the training set in order to perform best subset selection.
+```{r}
+set.seed (1)
+train <- sample(c(TRUE , FALSE), nrow(Hitters), replace = TRUE)
+test <- (!train)
+regfit.best = regsubsets(Salary ~ ., data = Hitters[train , ], nvmax = 19)
+```
+
+Computing validation set error to find the best model.
+```{r}
+test.mat <- model.matrix(Salary ~ ., data = Hitters[test , ])
+val.errors <- rep(NA, 19)
+for (i in 1:19) {
+  coefi <- coef(regfit.best , id = i)
+  pred <- test.mat[, names(coefi)] %*% coefi
+  val.errors[i] <- mean (( Hitters$Salary[test] - pred)^2)
+}
+val.errors
+which.min(val.errors)
+coef(regfit.best , 7)
+```
+
+Capturing above steps and creating our own predict method.
+
+```{r}
+predict.regsubsets <- function(object , newdata , id, ...) {
+  form <- as.formula(object$call [[2]])
+  mat <- model.matrix(form , newdata)
+  coefi <- coef(object , id = id)
+  xvars <- names(coefi)
+  mat[, xvars] %*% coefi
+}
+```
+
+Performing best subset selection on the full data set, and selecting the best seven-variable model
+
+```{r}
+k <- 10
+n <- nrow(Hitters)
+set.seed (1)
+folds <- sample(rep (1:k, length = n))
+cv.errors <- matrix(NA, k, 19,
+dimnames = list(NULL , paste (1:19)))
+for (j in 1:k) {
+  best.fit <- regsubsets(Salary ~ .,
+  data = Hitters[folds != j, ],
+  nvmax = 19)
+  for (i in 1:19) {
+    pred <- predict(best.fit , Hitters[folds == j, ], id = i)
+    cv.errors [j, i] <- mean (( Hitters$Salary[folds == j] - pred)^2)
+  }
+}
+```
+
+We now have 10x19 matrix. the (j, i)th element corresponds to the test MSE for the jth cross-validation fold for the best i-variable model. Using apply() function to average over the columns of this apply() matrix in order to obtain a vector for which the ith element is the cross-validation error for the i-variable model.
+
+```{r}
+mean.cv.errors <- apply(cv.errors , 2, mean)
+mean.cv.errors
+par(mfrow = c(1, 1))
+plot(mean.cv.errors , type = "b")
+```
+
+We now perform best subset selection on the full data set in order to obtain the 10-variable model.
+
+```{r}
+reg.best <- regsubsets(Salary ~ ., data = Hitters, nvmax = 19)
+coef(reg.best , 10)
+```
+
+
+# Lab 6.5 Part 2
+
+## 6.5.2 Ridge Regression and the Lasso
+
+Using model.matrix() to create x from the 19 predictors.
+```{r}
+x <- model.matrix(Salary ~ ., Hitters)[, -1]
+y <- Hitters$Salary
+```
+
+### Ridge Regression
+
+The glmnet() function has an alpha argument that determines what type of model is fit. If alpha=0 then a ridge regression model is fit, and if alpha=1 then a lasso model is fit. 
+We are implementing the function over a grid of values ranging from λ = 1010 to λ = 10−2, essentially covering the full range of scenarios from the null model containing only the intercept, to the least squares fit.
+
+```{r}
+library(glmnet)
+grid <- 10^seq(10, -2, length = 100)
+ridge.mod <- glmnet(x, y, alpha = 0, lambda = grid)
+dim(coef(ridge.mod))
+```
+
+Using predict() to obtain the ridge regression coefficients for a new value of λ, say 50. Split samples in test and training.
+
+```{r}
+predict(ridge.mod , s = 50, type = "coefficients")[1:20, ]
+set.seed (1)
+train <- sample (1: nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+```
+
+Fitting ridge model on the training set and evaluating MSE on the test set using λ = 4.Fitting a ridge regression model with λ = 4 leads to a much lower test MSE than fitting a model with just an intercept.
+```{r}
+ridge.mod = glmnet(x[train, ], y[train], alpha = 0, lambda = grid, thresh = 1e-12)
+ridge.pred <- predict(ridge.mod , s = 4, newx = x[test , ])
+mean (( ridge.pred - y.test)^2)
+```
+
+Now we try fitting a ridge model to see if its any better than least squares regression.
+```{r}
+ridge.pred <- predict(ridge.mod , s = 0, newx = x[test, ], exact = T, x = x[train, ], y = y[train])
+mean (( ridge.pred - y.test)^2)
+lm(y ~ x, subset = train)
+predict(ridge.mod , s = 0, exact = T, type = "coefficients",
+x = x[train, ], y = y[train])[1:20, ]
+```
+We use cv.glmnet() to use cross-validation to choose the tuning param λ. We get a smallest cross-validation error of 326. Finally, we refit our model on the full dataset and examine coeff estimates.
+```{r}
+set.seed (1)
+cv.out <- cv.glmnet(x[train , ], y[train], alpha = 0)
+plot(cv.out)
+bestlam <- cv.out$lambda.min
+bestlam
+ridge.pred <- predict(ridge.mod , s = bestlam ,
+newx = x[test , ])
+mean (( ridge.pred - y.test)^2)
+```
+
+
+### The Lasso
+
+We now use alpha = 1 for lasso. We perform cross-validation and compute the associated test error. It is lower than the test set MSE of the null model and of least squares, and very similar to the test MSE of ridge regression with λ chosen by cross-validation.
+```{r}
+lasso.mod <- glmnet(x[train , ], y[train], alpha = 1, lambda = grid)
+plot(lasso.mod)
+set.seed (1)
+cv.out <- cv.glmnet(x[train , ], y[train], alpha = 1)
+plot(cv.out)
+bestlam <- cv.out$lambda.min
+lasso.pred <- predict(lasso.mod , s = bestlam ,
+newx = x[test , ])
+mean (( lasso.pred - y.test)^2)
+```
+
+8 of the 19 coefficient estimates are exactly zero. So the lasso model with λ chosen by cross-validation contains only eleven variables.
+```{r}
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out , type = "coefficients",
+s = bestlam)[1:20, ]
+lasso.coef
+lasso.coef[lasso.coef != 0]
+```
+
+
+## Exercises 6.6
+
+**8) a) **\
+Answer - 
+```{r}
+x = rnorm(100, mean = 0, sd = 1)
+eps = rnorm(100, mean = 0, sd = 0.5)
+```
+
+**8) b) **\
+Answer - Let β0 = 2, β1 = 3, β2 = 0.5, β3 = 1
+```{r}
+y = 2 + 3*x + (0.5)*x^2 + 1*x^3 + eps
+```
+
+**8) c) **\
+Answer - 
+```{r}
+library(leaps)
+df = data.frame(X = x, X2 = x^2, X3 = x^3, X4 = x^4, X5 = x^5, X6 = x^6, X7 = x^7, X8 = x^8, X9 = x^9, X10 = x^10, Y = y)
+regfit.full = regsubsets(y ~ ., data = df, nvmax = 10)
+summary(regfit.full)
+reg.summary = summary(regfit.full)
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+which.max(reg.summary$adjr2)
+par(mfrow = c(2, 2))
+plot(reg.summary$cp , xlab = "Number of Variables", ylab = "Cp", type = "l")
+points(which.min(reg.fit.full.summary$cp), reg.fit.full.summary$cp[which.min(reg.fit.full.summary$cp)], col="red", cex=2, pch=20)
+plot(reg.summary$bic , xlab = "Number of Variables", ylab = "BIC", type = "l")
+points (4, reg.summary$bic[4], col = "red", cex = 2, pch = 20)
+plot(reg.summary$adjr2 , xlab = "Number of Variables", ylab = "Adjusted RSq", type = "l")
+```
+```{r}
+plot(regfit.full , scale = "adjr2")
+plot(regfit.full , scale = "Cp")
+plot(regfit.full , scale = "bic")
+coef(reg.fit.full, 4)
+```
+
+**8) d) **\
+Answer - 
+Forward Selection
+```{r}
+regfit.fwd = regsubsets(y ~ ., data = df, nvmax = 10, method ="forward")
+regfit.fwd.summary <- summary(regfit.fwd)
+which.min(regfit.fwd.summary$cp)
+which.min(regfit.fwd.summary$bic)
+which.max(regfit.fwd.summary$adjr2)
+coef(regfit.fwd, 4)
+```
+
+Backward selection
+```{r}
+regfit.bwd = regsubsets(y ~ ., data = df, nvmax = 10, method ="backward")
+regfit.bwd.summary <- summary(regfit.bwd)
+which.min(regfit.bwd.summary$cp)
+which.min(regfit.bwd.summary$bic)
+which.max(regfit.bwd.summary$adjr2)
+coef(regfit.bwd, 4)
+```
+
+**8) e) **\
+Answer -
+```{r}
+library(glmnet)
+X <- model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10), data=Xy)[, -1]
+Y <- Xy$y
+cv.lasso.mod <- cv.glmnet(X, Y, alpha=1)
+plot(cv.lasso.mod)
+min.lambda <- cv.lasso.mod$lambda.min
+min.lambda
+predict(cv.lasso.mod, s = min.lambda, type = "coefficients")[1:11, ]
+```
+
+**8) f) **\
+Answer - 
+Lasso
+```{r}
+y = 2 + 3*x + (0.5)*x^7 + eps
+X <- model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10), data=Xy)[, -1]
+Y <- Xy$y
+cv.lasso.mod <- cv.glmnet(X,Y,alpha=1)
+plot(cv.lasso.mod)
+min.lambda <- cv.lasso.mod$lambda.min
+min.lambda
+predict(cv.lasso.mod, s = min.lambda, type = "coefficients")[1:11, ] 
+
+```
+
+Best subset -
+```{r}
+df = data.frame(X = x, X2 = x^2, X3 = x^3, X4 = x^4, X5 = x^5, X6 = x^6, X7 = x^7, X8 = x^8, X9 = x^9, X10 = x^10, Y = y)
+regfit.full = regsubsets(y ~ ., data = df, nvmax = 10)
+summary(regfit.full)
+reg.summary = summary(regfit.full)
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+which.max(reg.summary$adjr2)
+```
