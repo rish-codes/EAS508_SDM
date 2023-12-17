@@ -1,0 +1,249 @@
+#' ---
+#' title: "HW4_harinris"
+#' author: "Harin Rishabh"
+#' date: "2023-11-05"
+#' output: html_document
+#' ---
+#' 
+#' # Lab 5.3
+#' 
+#' ## 5.3.1 The Validation Set Approach
+#' Using the sample() function to split the set of observations into two halves, by selecting a random subset of 196 observations out of the original 392 observations. We refer to these observations as the training set.
+#' -train index below selects only the observations that are not in the training set.
+#' Using this split of the observations into a training set and a validation set, we find that the validation set error rates for the models with linear, quadratic, and cubic terms are 23.26601, 18.71646, and 18.79401, respectively. This is consistent to previous findings, quadratic function is better than linear and cubic does not improve much.
+#' 
+## ------------------------------------------------------------------------------------------------------------------
+library(ISLR2)
+set.seed(1)
+train = sample (392 , 196)
+lm.fit <- lm(mpg ~ horsepower , data = Auto , subset = train)
+attach(Auto)
+mean((mpg - predict(lm.fit , Auto))[-train ]^2)
+lm.fit2 <- lm(mpg ~ poly(horsepower, 2), data = Auto, subset = train)
+mean (( mpg - predict(lm.fit2 , Auto))[-train ]^2)
+lm.fit3 <- lm(mpg ~ poly(horsepower, 3), data = Auto, subset = train)
+mean((mpg - predict(lm.fit3, Auto))[-train ]^2)
+
+#' ## 5.3.2 Leave-One-Out Cross-Validation
+#' The LOOCV estimate can be automatically computed for any generalized linear model using the glm() and cv.glm() functions. The cv.glm() function produces a list with several components. The two numbers in the delta vector contain the cross-validation results. 
+#' We can repeat this procedure for increasingly complex polynomial fits. To automate the process, we use the for() function to initiate a for loop for loop which iteratively fits polynomial regressions for polynomials of order i = 1 to i = 10, computes the associated cross-validation error, and stores it in the i-th element of the vector cv.error. There is a sharp drop in the estimated test MSE between the linear and quadratic fits, but then no clear improvement from using higher-order polynomials.
+#' 
+## ------------------------------------------------------------------------------------------------------------------
+library(boot)
+glm.fit <- glm(mpg ~ horsepower, data = Auto)
+cv.err <- cv.glm(Auto, glm.fit)
+cv.err$delta
+cv.error <- rep(0, 10)
+for (i in 1:10) {
+  glm.fit <- glm(mpg ~ poly(horsepower , i), data = Auto)
+  cv.error[i] <- cv.glm(Auto, glm.fit)$delta[1]
+}
+cv.error
+
+#' 
+#' ## 5.3.3 k-Fold Cross-Validation
+#' Using cv.glm(), we use k = 10, a common choice for k, on the Auto data set. As expected, we still see no drastic improvement by using higher order polynomials. 
+#' 
+## ------------------------------------------------------------------------------------------------------------------
+set.seed (17)
+cv.error.10 <- rep(0, 10)
+for (i in 1:10) {
+  glm.fit <- glm(mpg ~ poly(horsepower , i), data = Auto)
+  cv.error.10[i] <- cv.glm(Auto , glm.fit , K = 10)$delta [1]
+}
+cv.error.10
+
+#' 
+#' 
+#' # 7.8 Lab: Non-linear Modeling
+#' 
+#' ## 7.8.3 GAMs
+#' 
+#' We are trying to fit a GAM to predict wage using smoothing spline functions of year and age, treating education as a qualitative predictor. We perform 3 different GAMs, a GAM that excludes year (M1), a GAM that uses a linear function of year (M2), or a GAM that uses a spline function of year (M3). 
+#' We then perform a series of ANOVA tests in order to determine which of these three models is best. We find that there is compelling evidence that a GAM with a linear function of year is better than a GAM that does not include year at all (p-value=0.00014). However, there is no evidence that a non-linear function of year is needed (p-value=0.349)
+#' 
+## ------------------------------------------------------------------------------------------------------------------
+library(ISLR2)
+library(splines)
+library(gam)
+attach(Wage)
+gam.m3 <- gam(wage ~ s(year, 4) + s(age, 5) + education, data = Wage)
+par(mfrow = c(1, 3))
+plot(gam.m3, se = TRUE , col = "blue")
+gam.m1 <- gam(wage ~ s(age, 5) + education, data = Wage)
+gam.m2 <- gam(wage ~ year + s(age, 5) + education, data = Wage)
+anova(gam.m1, gam.m2, gam.m3, test = "F")
+summary(gam.m3)
+
+#' 
+#' We can also use local regression fits as building blocks in a GAM, using the lo() function. Here we have used local regression for the age term, with a span of 0.7.
+## ------------------------------------------------------------------------------------------------------------------
+gam.lo <- gam(wage ~ s(year, df = 4) + lo(age, span = 0.7) + education, data = Wage)
+plot.Gam(gam.lo, se = TRUE , col = "green")
+
+#' 
+#' We can also use the lo() function to create interactions before calling the gam() function. Here we fit a two-term model, in which the first term is an interaction between year and age, fit by a local regression surface. We can plot the resulting two-dimensional surface if we first install the akima package.
+#' 
+## ------------------------------------------------------------------------------------------------------------------
+gam.lo.i <- gam(wage ~ lo(year, age, span = 0.5) + education, data = Wage)
+library(akima)
+plot(gam.lo.i)
+
+#' 
+#' In order to fit a logistic regression GAM, we use the I() function in constructing the binary response variable, and set family=binomial. It is easy to see that there are no high earners in the < HS category. Hence, we fit a logistic regression GAM using all but this category.
+## ------------------------------------------------------------------------------------------------------------------
+gam.lr.s <- gam(I(wage > 250) ~ year + s(age , df = 5) + education, family = binomial, data = Wage, subset = (education != "1. < HS Grad"))
+plot(gam.lr.s, se = T, col = "green")
+
+#' 
+#' 
+#' ##  Exercise 5.4
+#' 
+#' **8) a)**\
+#' Answer - n = 100 and p = 3.
+#' The equation is  $Y=B~0~ + B~1~*(X) + B~2~*(X)^2 + error$
+## ------------------------------------------------------------------------------------------------------------------
+set.seed (1)
+x <- rnorm (100)
+y <- x - 2 * x^2 + rnorm (100)
+
+#' 
+#' **8) b)**\
+#' Answer - From the graph it can be inferred that there is a quadratic relationship between x and y.
+## ------------------------------------------------------------------------------------------------------------------
+plot(x,y)
+
+#' 
+#' **8) c) i)**\
+#' Answer -
+## ------------------------------------------------------------------------------------------------------------------
+set.seed(5)
+df<-data.frame(x,y)
+fit.glm1 <- glm(y ~ x)
+cv.glm(df, fit.glm1)$delta[1]
+
+#' 
+#' **8) c) ii)**\
+#' Answer -
+## ------------------------------------------------------------------------------------------------------------------
+fit.glm2 <- glm(y ~ poly(x, 2))
+cv.glm(df, fit.glm2)$delta[1]
+
+#' 
+#' **8) c) iii)**\
+#' Answer -
+## ------------------------------------------------------------------------------------------------------------------
+fit.glm3 <- glm(y ~ poly(x, 3))
+cv.glm(df, fit.glm3)$delta[1]
+
+#' 
+#' **8) c) iv)**\
+#' Answer -
+## ------------------------------------------------------------------------------------------------------------------
+fit.glm4 <- glm(y ~ poly(x, 4))
+cv.glm(df, fit.glm4)$delta[1]
+
+#' 
+#' **8) d)**\
+#' Answer - The results are same as the previous one as the model is built using the entire data set and leaving out one observation.
+## ------------------------------------------------------------------------------------------------------------------
+set.seed(2)
+fit.glm5<-glm(y~x)
+cv.glm(df,fit.glm5)$delta[1]
+fit.glm6<-glm(y~poly(x,2))
+cv.glm(df,fit.glm6)$delta[1]
+fit.glm7<-glm(y~poly(x,3))
+cv.glm(df,fit.glm7)$delta[1]
+fit.glm8<-glm(y~poly(x,4))
+cv.glm(df,fit.glm8)$delta[1]
+
+#' 
+#' **8) e)**\
+#' Answer - The smallest LOOCV error was seen in the quadratic fit. This was expected as the X-Y plot depicted a quadratic relationship.
+#' 
+#' **8) f)**\
+#' Answer - There is a significant drop in error from linear to quadratic fit. Higher order polynomials do not show any significant change. This is in line with the conclusions drawn from statistical inference with least error occurring in a quadratic fit.
+#' 
+#' 
+#' ##  Exercise 6.6
+#' 
+#' **9) a)**\
+#' Answer - 
+## ------------------------------------------------------------------------------------------------------------------
+attach(College)
+set.seed(1)
+train_idx <- sample (1: nrow(College), nrow(College) * 0.7)
+train <- College[train_idx, ]
+test <- College[-train_idx, ]
+
+#' 
+#' **9) b)**\
+#' Answer - 
+## ------------------------------------------------------------------------------------------------------------------
+lm.fit <- lm(Apps ~ ., data = train)
+summary(lm.fit)
+lm.pred <- predict(lm.fit, test)
+(mse <- mean((lm.pred - test$Apps)^2))
+
+#' 
+#' **9) c)**\
+#' Answer - The test error is slightly lesser than the one obtained for the linear model.
+## ------------------------------------------------------------------------------------------------------------------
+library(glmnet)
+train_mat<-model.matrix(Apps~.,data=train)
+test_mat<-model.matrix(Apps~.,data=test)
+grid <- 10^seq(4, -2, length=100)
+ridge.fit <- glmnet(y = train$Apps, x = train_mat, alpha = 0, lambda = grid)
+cv.ridge <- cv.glmnet(train_mat, train$Apps, alpha=0, lambda=grid)
+bestlambda.ridge = cv.ridge$lambda.min
+bestlambda.ridge
+pred.newlambdaridge <- predict(ridge.fit, s=bestlambda.ridge, newx = test_mat)
+mean((test$Apps-pred.newlambdaridge)^2)
+
+#' 
+#' **9) d)**\
+#' Answer - The error has further reduced when compared to ridge model.
+#' The number of non-zero coeffs are 14. 
+## ------------------------------------------------------------------------------------------------------------------
+lasso.fit <- glmnet(y = train$Apps, x = train_mat, alpha = 1, lambda = grid)
+cv.lasso <- cv.glmnet(train_mat, train$Apps, alpha=1, lambda=grid)
+bestlambda.lasso = cv.lasso$lambda.min
+bestlambda.lasso
+pred.newlambdalasso <- predict(lasso.fit, s=bestlambda.lasso, newx = test_mat)
+mean((test$Apps-pred.newlambdalasso)^2)
+predict(lasso.fit,s=bestlambda.lasso,type="coefficients")
+
+#' 
+#' ##  Exercise 7.9
+#' 
+#' **10) a)**\
+#' Answer - 
+## ------------------------------------------------------------------------------------------------------------------
+attach(College)
+set.seed(1)
+train_idx <- sample (1: nrow(College), nrow(College) * 0.7)
+train <- College[train_idx, ]
+test <- College[-train_idx, ]
+
+#' 
+#' **10) b)**\
+#' Answer - From the plots, we can say expend seems to have non-linear relationship. Alumni looks to be almost linear. The other plots look mostly linear but show some properties of non-linearity.
+## ------------------------------------------------------------------------------------------------------------------
+library(leaps)
+regfit.fwd <- regsubsets(Outstate ~ ., data = train, method = "forward")
+gam.fit <- gam(Outstate ~ Private + s(Room.Board) + s(PhD) + s(perc.alumni) + s(Expend) + s(Grad.Rate), data = train)
+par(mfrow = c(2, 3))
+plot(gam.fit, se = T, col = "red")
+
+#' 
+#' **10) c)**\
+#' Answer - The MSE obtained is fairly low and will definitely be lesser than the MSE obtained from a linear fit. This proves that the data set had some non-linear relationships and linear regression model is not enough.
+## ------------------------------------------------------------------------------------------------------------------
+mean((predict(gam.fit, newdata = test) - test$Outstate)^2)
+
+#' 
+#' **10) d)**\
+#' Answer - In the Anova for Nonparametric Effects table, p-values less that 0.05 indicates non-linear relationships. Expend and Room.Board clearly display non-linear relationships. The rest of the values are not significant enough.
+## ------------------------------------------------------------------------------------------------------------------
+summary(gam.fit)
+
