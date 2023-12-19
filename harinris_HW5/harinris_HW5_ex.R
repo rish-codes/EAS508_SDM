@@ -1,0 +1,236 @@
+#' ---
+#' title: "harinris_HW5_ex"
+#' author: "Harin Rishabh"
+#' date: "2023-11-27"
+#' output: html_document
+#' ---
+#' 
+#' **7**\
+#' Answer -\
+#' We can see that test MSE is very high for low number of trees and decreases rapidly as number of trees are increased. mtry value of 3 gives the lowest test MSE. Test MSE increases as mtry value increases. mtry = 1 has the highest MSE.
+## ------------------------------------------------------------------------------------------------------------------
+library(caTools)
+library(randomForest)
+library(ISLR2)
+library(tree)
+attach(Boston)
+
+set.seed(1)
+df = Boston
+sample.data = sample.split(df$medv, SplitRatio = 0.70)
+train.set = subset(df, select=-c(medv), sample.data==T) #Using select to drop medv(Y) column.
+test.set = subset(df, select=-c(medv), sample.data==F)
+train.Y = subset(df$medv, sample.data==T)
+test.Y = subset(df$medv, sample.data==F)
+
+rf1 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 1, ntree = 700)
+rf2 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 3, ntree = 700)
+rf3 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 5, ntree = 700)
+rf4 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 7, ntree = 700)
+rf5 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 9, ntree = 700)
+rf6 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 11, ntree = 700)
+rf7 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 13, ntree = 700)
+
+x.axis = seq(1, 700, 1) 
+plot(x.axis, rf1$test$mse, xlab = "Number of Trees", ylab="Test MSE", ylim=c(5,20), type="l",lwd=2, col="red")
+lines(x.axis,rf2$test$mse,col="blue",lwd=2)
+lines(x.axis,rf3$test$mse,col="green",lwd=2)
+lines(x.axis,rf4$test$mse,col="violet",lwd=2)
+lines(x.axis,rf5$test$mse,col="yellow",lwd=2)
+lines(x.axis,rf6$test$mse,col="cyan",lwd=2)
+lines(x.axis,rf7$test$mse,col="orange",lwd=2)
+
+
+legend(550, 15,legend=c("mtry=1", "mtry=3", "mtry=5", "mtry=7", "mtry=9", "mtry=11", "mtry=13"), 
+       col=c("red", "blue", "green", "violet", "yellow", "cyan", "orange"), lty=c(1,1,1), lwd=c(2,2,2))
+
+#' 
+#' **8 a)**\
+#' Answer -\
+## ------------------------------------------------------------------------------------------------------------------
+set.seed(1)
+train_index <- sample(1:nrow(Carseats), nrow(Carseats) / 2)
+
+train <- Carseats[train_index, ]
+test <- Carseats[-train_index, ]
+tree_model <- tree(Sales ~ ., train)
+
+
+#' 
+#' **8 b)**\
+#' Answer -\ Shelveloc and price are the most important predictors. Test MSE is 4.92.
+## ------------------------------------------------------------------------------------------------------------------
+plot(tree_model)
+text(tree_model, pretty = 0, cex = 0.6)
+tree.pred = predict(tree_model,test)
+test.mse = mean((tree.pred-test$Sales)^2)
+test.mse
+
+#' 
+#' **8 c)**\
+#' Answer -\ It is clear the best model is obtained with all 18 terminal nodes.
+## ------------------------------------------------------------------------------------------------------------------
+set.seed(1)
+cv.carseats = cv.tree(tree_model)
+plot(cv.carseats$size,cv.carseats$dev,xlab="Terminal Nodes",ylab="CV RSS",type="b")
+
+#' 
+#' So we prune the full three to contain all 18 terminal nodes. The MSE is 4.922, same as an unpruned tree.
+## ------------------------------------------------------------------------------------------------------------------
+pruned_tree_model <- prune.tree(tree_model, best = 18)
+test_pred <- predict(pruned_tree_model, test)
+mean((test_pred - test$Sales)^2)
+
+#' 
+#' **8 d)**
+#' Answer - \
+#' Test MSE is 2.60 which is much better than regression tree approach.
+#' The most important predictors are price and ShelveLoc as expected.
+## ------------------------------------------------------------------------------------------------------------------
+set.seed(1)
+bag.carseats <- randomForest(Sales ~., data = train, mtry = 10, importance = TRUE)
+importance(bag.carseats)
+bag.pred = predict(bag.carseats, newdata = test)
+mean((bag.pred-test$Sales)^2)
+
+#' 
+#' **8 e)**
+#' Answer - \
+#' The least Test MSE is 2.184395 which is observed when Number of trees is 8 and mtry is 6. The most important predictors are ShelveLoc and price.
+#' Test MSE reduces rapidly as number of trees increases until about 20.
+#' mtry of 6 is the best, 8 is worse, 2 is the worst.
+#' 
+## ------------------------------------------------------------------------------------------------------------------
+set.seed(1)
+df = Carseats
+sample.data = sample.split(df$Sales, SplitRatio = 0.70)
+train.set = subset(df, select=-c(Sales), sample.data==T)
+test.set = subset(df, select=-c(Sales), sample.data==F)
+train.Y = subset(df$Sales, sample.data==T)
+test.Y = subset(df$Sales, sample.data==F)
+
+rf1 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 2, ntree = 70)
+rf2 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 4, ntree = 70)
+rf3 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 6, ntree = 70)
+rf4 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 8, ntree = 70)
+rf5 = randomForest(train.set, train.Y, test.set, test.Y, mtry = 10, ntree = 70)
+
+x.axis = seq(1, 70, 1) 
+plot(x.axis, rf1$test$mse, xlab = "Number of Trees", ylab="Test MSE", ylim=c(1,8), type="l",lwd=2, col="red")
+lines(x.axis,rf2$test$mse,col="blue",lwd=2)
+lines(x.axis,rf3$test$mse,col="green",lwd=2)
+lines(x.axis,rf4$test$mse,col="violet",lwd=2)
+lines(x.axis,rf5$test$mse,col="cyan",lwd=2)
+
+
+legend(50, 8,legend=c("mtry=2", "mtry=4", "mtry=6", "mtry=8", "mtry=10"), 
+       col=c("red", "blue", "green", "violet", "cyan"), lty=c(1,1,1), lwd=c(2,2,2))
+
+rf3$test$mse
+importance(rf3)
+
+#' 
+#' **8 f)**
+#' Answer -\
+#' Test MSE is 1.17 which is by far the best we have seen.
+## ------------------------------------------------------------------------------------------------------------------
+library(BART)
+set.seed(1)
+
+bartfit = gbart(train.set, train.Y, x.test = test.set)
+
+yhat.bart <- bartfit$yhat.test.mean
+mean ((test.Y - yhat.bart)^2)
+
+#' 
+#' 
+#' **10 a)**\
+#' Answer - \
+## ------------------------------------------------------------------------------------------------------------------
+set.seed(1)
+attach(Hitters)
+
+Hitters <- na.omit(Hitters, cols = "Salary")
+Hitters$Salary = log(Hitters$Salary)
+
+#' 
+#' **10 b)**\
+#' Answer - \
+## ------------------------------------------------------------------------------------------------------------------
+train <- Hitters[1:200, ]
+test <- Hitters[201:nrow(Hitters), ]
+
+#' 
+#' **10 c)**\
+#' Answer - \
+## ------------------------------------------------------------------------------------------------------------------
+library(gbm)
+lambda_seq = seq(0.0001 ,0.5, 0.01)
+train.mse = c()
+test.mse = c()
+
+for (i in lambda_seq){
+  boost.Hitters = gbm(Salary~., data=train, distribution = "gaussian", n.trees = 1000, 
+                      interaction.depth = 2, shrinkage = i)
+  yhat.train = predict(boost.Hitters, newdata = train, n.trees = 1000)
+  train.mse[which(i==lambda_seq)] = mean((yhat.train-train$Salary)^2)
+  
+  yhat.test = predict(boost.Hitters,newdata = test, n.trees = 1000)
+  test.mse[which(i==lambda_seq)] = mean((yhat.test-test$Salary)^2)
+}
+
+plot(lambda_seq,train.mse,type="b",xlab=expression(lambda), ylab="Train MSE")
+min(test.mse)
+
+#' 
+#' **10 d)**\
+#' Answer - \
+## ------------------------------------------------------------------------------------------------------------------
+plot(lambda_seq, test.mse,type="b",xlab=expression(lambda), ylab="Test MSE")
+
+#' 
+#' **10 e)**\
+#' Answer - \ The Test MSE of Multiple regression and Ridge Regression is 0.49 and 0.45. Boosting displayed a test MSE of 0.27 which superior.
+#' 
+#' Multiple Regression
+## ------------------------------------------------------------------------------------------------------------------
+lm.fit = lm(Salary~., data=train)
+lm.pred = predict(lm.fit, newdata = test)
+lm.mse = mean((test$Salary-lm.pred)^2)
+lm.mse
+
+#' 
+#' Ridge Regression
+## ------------------------------------------------------------------------------------------------------------------
+library(glmnet)
+train.mat = model.matrix(Salary~.,train)
+test.mat = model.matrix(Salary~.,test)
+y.train = train$Salary
+ridge.mod = glmnet(train.mat, y.train, alpha = 0)
+cv.out=cv.glmnet(train.mat, y.train, alpha=0)
+bestlam=cv.out$lambda.min
+ridge.pred=predict(ridge.mod, s=bestlam, newx = test.mat)
+mean((test$Salary-ridge.pred)^2)
+
+#' 
+#' 
+#' **10 f)**\
+#' Answer - \
+#' CAtBat, CHits, CWalks and CRBI are the most important predictors.
+## ------------------------------------------------------------------------------------------------------------------
+lambda_seq[which.min(test.mse)]
+min(test.mse)
+boost.best = gbm(Salary~., data=train, distribution = "gaussian", n.trees = 1000, 
+                 interaction.depth = 2, shrinkage = 0.0201)
+summary(boost.best)
+
+#' 
+#' 
+#' **10 g)**\
+#' Answer - \ 
+#' Bagging displays a Test MSE of 0.229 which is a little better than boosting.
+## ------------------------------------------------------------------------------------------------------------------
+bag.Hitters = randomForest(Salary~.,train, mtry=19)
+bag.pred = predict(bag.Hitters, newdata = test)
+mean((test$Salary-bag.pred)^2)
+
